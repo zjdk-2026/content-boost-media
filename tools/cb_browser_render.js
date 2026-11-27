@@ -138,7 +138,7 @@ CB.render = async (blob, c) => {
   const last = document.createElement('canvas'); last.width = W; last.height = H; const lctx = last.getContext('2d');
   const snapC = document.createElement('canvas'); snapC.width = 270; snapC.height = 480;
   const ac = new AudioContext(); const srcN = ac.createMediaElementSource(vid); const gn = ac.createGain(); gn.gain.value = lg.gain;
-  const lim = ac.createDynamicsCompressor(); lim.threshold.value = -2; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.08;
+  const lim = ac.createDynamicsCompressor(); lim.threshold.value = -5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.08;
   const dest = ac.createMediaStreamDestination(); srcN.connect(gn); gn.connect(lim); lim.connect(dest);
   const vs = cv.captureStream(30); const ms = new MediaStream([...vs.getVideoTracks(), ...dest.stream.getAudioTracks()]);
   const mime = 'video/mp4;codecs=avc1.42E01F,mp4a.40.2';
@@ -152,9 +152,13 @@ CB.render = async (blob, c) => {
     CB.caps(ctx, t, c, B, cd ? (c.capYCard || 1060) : (c.hook && t < c.hook.until ? (c.capYHook || 1190) : (c.capY || 1000)));
     while (want.length && t >= want[0]) { const k = want.shift(); snapC.getContext('2d').drawImage(cv, 0, 0, 270, 480); snaps[k.toFixed(1)] = snapC.toDataURL('image/jpeg', 0.7); }
   };
+  let phase = 'body';
+  const onVis = async () => { if (document.hidden) { if (rec.state === 'recording') rec.pause(); if (phase === 'body') vid.pause(); CB.stats && CB.stats.pauses++; }
+    else { if (phase === 'body') { await vid.play(); } if (rec.state === 'paused') rec.resume(); } };
+  document.addEventListener('visibilitychange', onVis);
   paint(0); rec.start(1000); await ac.resume(); await vid.play();
   await new Promise(res => {
-    let done = false; CB.stats = {frames: 0, hidden: 0, errs: []};
+    let done = false; CB.stats = {frames: 0, hidden: 0, pauses: 0, errs: []};
     const tick = () => { if (done) return; const t = vid.currentTime; if (document.hidden) CB.stats.hidden++;
       if (t >= c.bodyEnd || vid.ended) { done = true; clearInterval(iv); res(); return; }
       if (t >= c.bodyEnd - 0.08) gn.gain.setTargetAtTime(0, ac.currentTime, 0.02);
@@ -164,8 +168,11 @@ CB.render = async (blob, c) => {
     const iv = setInterval(tick, 33);
   });
   vid.pause(); gn.gain.value = 0;
-  const t0 = performance.now();
-  await new Promise(res => { const st = () => { const t = (performance.now() - t0) / 1000; if (t >= 2.8) { res(); return; } CB.endcard(ctx, last, t, c, B); if (want.length && want[0] >= c.bodyEnd) { const k = want.shift(); snapC.getContext('2d').drawImage(cv, 0, 0, 270, 480); snaps[k.toFixed(1)] = snapC.toDataURL('image/jpeg', 0.7); } requestAnimationFrame(st); }; st(); });
+  phase = 'end'; let et = 0, prev = performance.now();
+  await new Promise(res => { const iv2 = setInterval(() => { const now = performance.now(); if (!document.hidden) et += (now - prev) / 1000; prev = now;
+      if (et >= 2.8) { clearInterval(iv2); res(); return; } CB.endcard(ctx, last, et, c, B);
+      if (want.length && want[0] >= c.bodyEnd) { const k = want.shift(); snapC.getContext('2d').drawImage(cv, 0, 0, 270, 480); snaps[k.toFixed(1)] = snapC.toDataURL('image/jpeg', 0.7); } }, 33); });
+  document.removeEventListener('visibilitychange', onVis);
   rec.stop(); await new Promise(r => rec.onstop = r);
   const out = new Blob(chunks, {type: 'video/mp4'}); cv.remove(); vid.remove(); ac.close();
   CB.out = CB.out || {}; CB.out[c.name] = out; CB.snaps = CB.snaps || {}; CB.snaps[c.name] = snaps;
