@@ -62,6 +62,7 @@ CB.hook = (ctx, t, c, B) => {
   ctx.globalAlpha = 1;
 };
 CB.caps = (ctx, t, c, B, y) => {
+  if (c.brand === 'delel' && (c.cards || []).some(k => k.t <= t && t < k.t + k.dur)) B = Object.assign({}, B, {box: '#DDDEDA', boxText: '#133433'});
   const pg = c.pages.find(p => p.t0 <= t && t < p.t1); if (!pg) return;
   const f = CB.font(B.cap, B.capW, B.capSize); ctx.font = f; const gap = 14;
   const ws = pg.words.map(w => ctx.measureText(w.d).width);
