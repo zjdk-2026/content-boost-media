@@ -176,7 +176,7 @@ CB.render = async (blob, c) => {
   rec.stop(); await new Promise(r => rec.onstop = r);
   const out = new Blob(chunks, {type: 'video/mp4'}); cv.remove(); vid.remove(); ac.close();
   CB.out = CB.out || {}; CB.out[c.name] = out; CB.snaps = CB.snaps || {}; CB.snaps[c.name] = snaps;
-  const a = document.createElement('a'); a.href = URL.createObjectURL(out); a.download = c.name + '.mp4'; document.body.appendChild(a); a.click(); a.remove();
   return {name: c.name, stats: CB.stats, size: out.size, lufs: lg.lufs, gain: lg.gain, snaps: Object.keys(snaps)};
 };
+CB.save = (name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(CB.out[name]); a.download = name + '.mp4'; document.body.appendChild(a); a.click(); a.remove(); return name; };
 'CB ready';
