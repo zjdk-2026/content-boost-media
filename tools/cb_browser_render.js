@@ -35,6 +35,11 @@ CB.drawFrame = (ctx, vid, t, c) => {
   const k = (c.joins || []).filter(j => j <= t).length;
   const z = k % 2 ? (c.flip || 1.08) : 1.0;
   const vw = vid.videoWidth, vh = vid.videoHeight;
+  if (c.hook && t < c.hook.until) { // hook layout: brand panel on top, speaker window below
+    const top = c.hook.win || 430; ctx.fillStyle = CB.BR[c.brand].dark; ctx.fillRect(0, 0, W, top);
+    const sh = (H - top) * vw / W; const sy0 = Math.max(0, Math.min(vh - sh, vh * 0.30 - sh * 0.30));
+    ctx.drawImage(vid, 0, sy0, vw, sh, 0, top, W, H - top); return;
+  }
   const cw = vw / z, ch = vh / z, fy = c.faceY || 0.40;
   const sx = (vw - cw) / 2, sy = Math.max(0, Math.min(vh - ch, vh * fy - ch * fy));
   ctx.drawImage(vid, sx, sy, cw, ch, 0, 0, W, H);
@@ -43,14 +48,14 @@ CB.hook = (ctx, t, c, B) => {
   const hk = c.hook; if (!hk || t >= hk.until) return;
   const a = CB.ease(t / 0.25);
   ctx.globalAlpha = a;
-  let y = hk.y || 200;
+  let y = hk.y || 170;
   if (hk.kicker) { CB.textC(ctx, hk.kicker, y, CB.font(B.label, B.labelW, 22), B.light, {sp: 4, shadow: 1}); y += 64; }
   const lines = hk.lines.map(l => B.upperHook ? l.toUpperCase() : l);
   let hs = hk.size || (B.upperHook ? 56 : 68);
   ctx.font = CB.font(B.dispFam, B.dispW, hs);
   while (hs > 34 && Math.max(...lines.map(l => ctx.measureText(l).width)) > 620) { hs -= 2; ctx.font = CB.font(B.dispFam, B.dispW, hs); }
   lines.forEach((l, i) => {
-    const w = CB.textC(ctx, l, y, CB.font(B.dispFam, B.dispW, hs), '#FFFFFF', {stroke: 6});
+    const w = CB.textC(ctx, l, y, CB.font(B.dispFam, B.dispW, hs), '#FFFFFF', {shadow: 1});
     if (B.dot && i === lines.length - 1 && !/[.?!]$/.test(l)) { ctx.fillStyle = B.box; ctx.fillText('.', (CB.W + w) / 2 + 2, y); }
     y += hs * 1.12;
   });
