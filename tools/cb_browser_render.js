@@ -131,7 +131,7 @@ CB.loudGain = async (blob, end, target) => {
 CB.render = async (blob, c) => {
   const B = CB.BR[c.brand]; const W = CB.W, H = CB.H;
   const lg = await CB.loudGain(blob, c.bodyEnd, -14);
-  const vid = document.createElement('video'); vid.src = URL.createObjectURL(blob); vid.playsInline = true; vid.preload = 'auto';
+  const vid = document.createElement('video'); vid.src = URL.createObjectURL(blob); vid.playsInline = true; vid.preload = 'auto'; vid.style.cssText = 'position:fixed;right:0;bottom:0;width:72px;height:128px;opacity:0.02;z-index:99998'; document.body.appendChild(vid);
   await new Promise(r => vid.onloadeddata = r); vid.currentTime = 0; await new Promise(r => vid.onseeked = r);
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
   cv.style.cssText = 'position:fixed;left:0;top:0;height:90vh;z-index:99999;background:#000'; document.body.appendChild(cv);
@@ -154,19 +154,22 @@ CB.render = async (blob, c) => {
   };
   paint(0); rec.start(1000); await ac.resume(); await vid.play();
   await new Promise(res => {
-    const step = () => { const t = vid.currentTime; if (t >= c.bodyEnd || vid.ended) { res(); return; }
+    let done = false; CB.stats = {frames: 0, hidden: 0, errs: []};
+    const tick = () => { if (done) return; const t = vid.currentTime; if (document.hidden) CB.stats.hidden++;
+      if (t >= c.bodyEnd || vid.ended) { done = true; clearInterval(iv); res(); return; }
       if (t >= c.bodyEnd - 0.08) gn.gain.setTargetAtTime(0, ac.currentTime, 0.02);
-      paint(t); vid.requestVideoFrameCallback(step); };
+      try { paint(t); CB.stats.frames++; } catch (e) { CB.stats.errs.push(String(e)); } };
+    const step = () => { tick(); if (!done) vid.requestVideoFrameCallback(step); };
     vid.requestVideoFrameCallback(step);
-    setInterval(() => { if (vid.currentTime >= c.bodyEnd) res(); }, 50);
+    const iv = setInterval(tick, 33);
   });
   vid.pause(); gn.gain.value = 0;
   const t0 = performance.now();
   await new Promise(res => { const st = () => { const t = (performance.now() - t0) / 1000; if (t >= 2.8) { res(); return; } CB.endcard(ctx, last, t, c, B); if (want.length && want[0] >= c.bodyEnd) { const k = want.shift(); snapC.getContext('2d').drawImage(cv, 0, 0, 270, 480); snaps[k.toFixed(1)] = snapC.toDataURL('image/jpeg', 0.7); } requestAnimationFrame(st); }; st(); });
   rec.stop(); await new Promise(r => rec.onstop = r);
-  const out = new Blob(chunks, {type: 'video/mp4'}); cv.remove(); ac.close();
+  const out = new Blob(chunks, {type: 'video/mp4'}); cv.remove(); vid.remove(); ac.close();
   CB.out = CB.out || {}; CB.out[c.name] = out; CB.snaps = CB.snaps || {}; CB.snaps[c.name] = snaps;
   const a = document.createElement('a'); a.href = URL.createObjectURL(out); a.download = c.name + '.mp4'; document.body.appendChild(a); a.click(); a.remove();
-  return {name: c.name, size: out.size, lufs: lg.lufs, gain: lg.gain, snaps: Object.keys(snaps)};
+  return {name: c.name, stats: CB.stats, size: out.size, lufs: lg.lufs, gain: lg.gain, snaps: Object.keys(snaps)};
 };
 'CB ready';
