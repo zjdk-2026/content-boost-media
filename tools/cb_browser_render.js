@@ -149,7 +149,7 @@ CB.render = async (blob, c) => {
     const cd = (c.cards || []).find(k => k.t <= t && t < k.t + k.dur);
     if (cd) { lctx.drawImage(vid, 0, 0, W, H); CB.card(ctx, cd, t, B, last); }
     else { CB.drawFrame(ctx, vid, t, c); lctx.drawImage(cv, 0, 0); CB.hook(ctx, t, c, B); }
-    CB.caps(ctx, t, c, B, cd ? (c.capYCard || 1060) : (c.capY || 1000));
+    CB.caps(ctx, t, c, B, cd ? (c.capYCard || 1060) : (c.hook && t < c.hook.until ? (c.capYHook || 1190) : (c.capY || 1000)));
     while (want.length && t >= want[0]) { const k = want.shift(); snapC.getContext('2d').drawImage(cv, 0, 0, 270, 480); snaps[k.toFixed(1)] = snapC.toDataURL('image/jpeg', 0.7); }
   };
   paint(0); rec.start(1000); await ac.resume(); await vid.play();
